@@ -1,0 +1,28 @@
+{
+  "name": "mitm-ca",
+  "version": "1.0.0",
+  "description": "mitm-ca to generate SSL certs on the fly",
+  "main": "index.js",
+  "dependencies": {
+    "mout": "^1.0.0",
+    "node-forge": "^0.7.1",
+    "nyks": "^3.19.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/131/mitm-ca.git"
+  },
+  "keywords": [
+    "mitm"
+  ],
+  "author": "Francois Leurent <131.js@cloudyks.org>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/131/mitm-ca/issues"
+  },
+  "homepage": "https://github.com/131/mitm-ca#readme"
+}
