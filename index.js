@@ -1,36 +1,19 @@
 'use strict';
 
-const fs   = require('fs');
-const path = require('path');
-
-const Forge = require('node-forge');
-const randHex    = require('mout/random/randHex');
-const mkdirpSync = require('nyks/fs/mkdirpSync');
+const Forge     = require('node-forge');
+const randHex   = require('mout/random/randHex');
 const pki = Forge.pki;
 
 const props = require('./ca.props');
 
 
-class CA {
+class CAForge {
 
-  constructor(CAfolder) {
-    this.CAfolder = CAfolder;
-    var CAkeypath   = path.join(CAfolder, 'ca.rsa');
-    var CAcertpath  = path.join(CAfolder, 'ca.crt');
-
-    mkdirpSync(CAfolder);
-
-    if(!fs.existsSync(CAcertpath)) {
-      var ca = this._generateCA();
-      fs.writeFileSync(CAkeypath, ca.key);
-      fs.writeFileSync(CAcertpath, ca.cert);
-    }
-
-    this.CAcert = pki.certificateFromPem(fs.readFileSync(CAcertpath, 'utf-8'));
-    this.CAkey  = pki.privateKeyFromPem(fs.readFileSync(CAkeypath, 'utf-8'));
+  constructor(store) {
+    this.store = store && store.get ? store : new Map([["ca", store]]);
   }
 
-  _generateCA() {
+  static generateCA() {
     var keys = pki.rsa.generateKeyPair({bits: 2048});
     var cert = pki.createCertificate();
     cert.publicKey = keys.publicKey;
@@ -69,7 +52,7 @@ class CA {
       value: mainHost
     })
     certServer.setSubject(attrsServer);
-    certServer.setIssuer(this.CAcert.issuer.attributes);
+    certServer.setIssuer(this.CA.cert.issuer.attributes);
 
     certServer.setExtensions(props.ServerExtensions.concat([{
       name: 'subjectAltName',
@@ -81,7 +64,7 @@ class CA {
       })
     }]));
 
-    certServer.sign(this.CAkey, Forge.md.sha256.create());
+    certServer.sign(this.CA.key, Forge.md.sha256.create());
 
     return {
       cert : pki.certificateToPem(certServer),
@@ -89,27 +72,35 @@ class CA {
     };
   }
 
-
-  getBundle(hostname) {
-    var wd = path.join(this.CAfolder, hostname);
-    var certPath = path.join(wd, 'server.crt');
-    var keyPath  = path.join(wd, 'server.rsa');
-
-    if(!(fs.existsSync(certPath) && fs.existsSync(keyPath))) {
-      var bundle = this._generateServerCertificateKeys(hostname);
-      mkdirpSync(wd);
-      fs.writeFileSync(certPath, bundle.cert);
-      fs.writeFileSync(keyPath, bundle.key);
+  async _getCA(){
+    var bundle = await this.store.get("ca");
+    if(!bundle) {
+      bundle = await CAForge.generateCA();
+      await this.store.set("ca", bundle);
     }
 
     return {
-      key  : fs.readFileSync(keyPath, 'utf-8'),
-      cert : fs.readFileSync(certPath, 'utf-8')
+      cert : pki.certificateFromPem(bundle.cert),
+      key  : pki.privateKeyFromPem(bundle.key)
     };
   }
+
+  async getBundle(hostname) {
+    if(!this.CA)
+      this.CA = await this._getCA();
+
+    var bundle = await this.store.get(hostname);
+    if(!bundle) {
+      bundle = this._generateServerCertificateKeys(hostname);
+      await this.store.set(hostname, bundle);
+    }
+
+    return bundle;
+  }
+
 
 }
 
 
 
-module.exports = CA;
+module.exports = CAForge;
