@@ -4,7 +4,7 @@ const fs   = require('fs');
 const path = require('path');
 const mkdirpSync = require('nyks/fs/mkdirpSync');
 
-const CA = require('./core');
+const CA = require('.');
 
 class CAfs extends CA {
   constructor(CAfolder)  {
